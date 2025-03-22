@@ -30,10 +30,6 @@
     .animate-fade {
       animation: fadeIn 0.5s ease-in-out;
     }
-    /* Separación extra para el botón de reiniciar */
-    #resetBtn {
-      margin-left: 10px;
-    }
   </style>
 </head>
 <body>
@@ -111,9 +107,11 @@
           </ul>
         </div>
       </div>
-      <!-- Botones para compartir y reiniciar -->
+      <!-- Botones separados en bloques para dar espacio vertical -->
       <div class="mb-3">
         <button id="shareBtn" class="btn btn-info">Enviar Resumen por WhatsApp</button>
+      </div>
+      <div class="mb-3">
         <button id="resetBtn" class="btn btn-danger">Reiniciar Marcadores</button>
       </div>
     </div>
@@ -245,7 +243,6 @@
       sortedPlayers.forEach(player => {
         message += player + ": " + (data.totals[player] || 0) + "€\n";
       });
-      // Se eliminó la línea de "Historial de Partidas:" para que no aparezca al final
       data.rounds.forEach((round, index) => {
         message += "Ronda " + (index+1) + ": ";
         players.forEach(player => {
@@ -267,6 +264,7 @@
   </script>
 </body>
 </html>
+
 
 
 
