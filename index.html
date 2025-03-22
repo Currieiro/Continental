@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Continental: los novios y sus mujeres">
-  <!-- Icono para cuando añadas la app a la pantalla de inicio (reemplaza "icon.png" por tu icono) -->
+  <!-- Icono para la pantalla de inicio (sustituye "icon.png" por tu icono) -->
   <link rel="apple-touch-icon" href="icon.png">
   
   <!-- Bootstrap CSS para un diseño atractivo -->
@@ -21,6 +21,14 @@
     }
     .card {
       margin-bottom: 20px;
+    }
+    /* Animación divertida: fade in */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade {
+      animation: fadeIn 0.5s ease-in-out;
     }
   </style>
 </head>
@@ -90,7 +98,7 @@
         <div class="card-body">
           <h4>Totales Acumulados</h4>
           <ul id="totalsList" class="list-group mb-3">
-            <!-- Se mostrarán los totales -->
+            <!-- Se mostrarán los totales ordenados de menor a mayor -->
           </ul>
 
           <h4>Historial de Partidas</h4>
@@ -99,9 +107,11 @@
           </ul>
         </div>
       </div>
-      
-      <!-- Botón para enviar resumen por WhatsApp -->
-      <button id="shareBtn" class="btn btn-info">Enviar Resumen por WhatsApp</button>
+      <!-- Botones para compartir y reiniciar -->
+      <div class="mb-3">
+        <button id="shareBtn" class="btn btn-info">Enviar Resumen por WhatsApp</button>
+        <button id="resetBtn" class="btn btn-danger">Reiniciar Marcadores</button>
+      </div>
     </div>
   </div>
 
@@ -131,21 +141,30 @@
       updateRoundsDisplay();
     }
 
-    // Guardar datos en localStorage
+    // Función para guardar en localStorage
     function saveData() {
       localStorage.setItem('continentalData', JSON.stringify(data));
     }
 
-    // Actualizar visualización de totales
+    // Función para aplicar animación a un elemento
+    function animateElement(element) {
+      element.classList.add("animate-fade");
+      setTimeout(() => element.classList.remove("animate-fade"), 500);
+    }
+
+    // Actualizar visualización de totales (ordenados de menor a mayor)
     function updateTotalsDisplay() {
       const totalsList = document.getElementById('totalsList');
       totalsList.innerHTML = "";
-      players.forEach(player => {
+      // Crear array de jugadores con su total y ordenarlos
+      let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
+      sortedPlayers.forEach(player => {
         const li = document.createElement('li');
         li.className = "list-group-item";
         li.textContent = player + ": " + (data.totals[player] || 0) + "€";
         totalsList.appendChild(li);
       });
+      animateElement(totalsList);
     }
 
     // Actualizar visualización del historial de rondas
@@ -159,6 +178,7 @@
           players.map(player => player + " - " + round.scores[player] + " pts, paga " + round.payments[player] + "€").join(" | ");
         roundsList.appendChild(li);
       });
+      animateElement(roundsList);
     }
 
     // Manejar el envío del formulario de configuración inicial
@@ -185,7 +205,7 @@
         const input = document.getElementById('score' + player);
         const value = parseFloat(input.value) || 0;
         roundScores[player] = value;
-        input.value = ""; // Limpiar campo
+        input.value = ""; // Limpiar el campo
       });
 
       // Ordenar jugadores según la puntuación (de menor a mayor)
@@ -216,7 +236,9 @@
     // Manejar el botón para compartir resumen por WhatsApp
     document.getElementById('shareBtn').addEventListener('click', function() {
       let message = "Resumen Continental:\n\nTotales:\n";
-      players.forEach(player => {
+      // Usamos el mismo orden que en los totales
+      let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
+      sortedPlayers.forEach(player => {
         message += player + ": " + (data.totals[player] || 0) + "€\n";
       });
       message += "\nHistorial de Partidas:\n";
@@ -230,6 +252,15 @@
       let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(message);
       window.open(url, '_blank');
     });
+
+    // Manejar el botón para reiniciar marcadores
+    document.getElementById('resetBtn').addEventListener('click', function() {
+      if(confirm("¿Estás seguro de que deseas reiniciar los marcadores?")) {
+        localStorage.removeItem('continentalData');
+        location.reload();
+      }
+    });
   </script>
 </body>
 </html>
+
