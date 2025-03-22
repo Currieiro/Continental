@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Continental: los novios y sus mujeres</title>
+  <!-- Optimización para móviles y apariencia de app en iPhone -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Continental: los novios y sus mujeres">
+  <!-- Icono para cuando añadas la app a la pantalla de inicio (reemplaza "icon.png" por tu icono) -->
+  <link rel="apple-touch-icon" href="icon.png">
+  
+  <!-- Bootstrap CSS para un diseño atractivo -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  
+  <style>
+    body {
+      padding: 20px;
+      background: #f0f8ff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen;
+    }
+    .card {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center mb-4">Continental: los novios y sus mujeres</h1>
+
+    <!-- Sección de Configuración Inicial -->
+    <div id="configSection" class="card">
+      <div class="card-header">Configuración Inicial</div>
+      <div class="card-body">
+        <form id="configForm">
+          <div class="form-group">
+            <label>Andrea</label>
+            <input type="number" step="0.1" class="form-control" id="inputAndrea" required>
+          </div>
+          <div class="form-group">
+            <label>Manolo</label>
+            <input type="number" step="0.1" class="form-control" id="inputManolo" required>
+          </div>
+          <div class="form-group">
+            <label>Ricky</label>
+            <input type="number" step="0.1" class="form-control" id="inputRicky" required>
+          </div>
+          <div class="form-group">
+            <label>Txus</label>
+            <input type="number" step="0.1" class="form-control" id="inputTxus" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Sección de Registro de Partidas y Resumen -->
+    <div id="gameSection" style="display: none;">
+      <!-- Registro de Partida -->
+      <div class="card">
+        <div class="card-header">Registrar Partida</div>
+        <div class="card-body">
+          <form id="roundForm">
+            <div class="form-row">
+              <div class="form-group col-md-3">
+                <label>Andrea</label>
+                <input type="number" class="form-control" id="scoreAndrea" required>
+              </div>
+              <div class="form-group col-md-3">
+                <label>Manolo</label>
+                <input type="number" class="form-control" id="scoreManolo" required>
+              </div>
+              <div class="form-group col-md-3">
+                <label>Ricky</label>
+                <input type="number" class="form-control" id="scoreRicky" required>
+              </div>
+              <div class="form-group col-md-3">
+                <label>Txus</label>
+                <input type="number" class="form-control" id="scoreTxus" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success">Registrar Partida</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Resumen y Historial -->
+      <div class="card">
+        <div class="card-header">Resumen y Historial</div>
+        <div class="card-body">
+          <h4>Totales Acumulados</h4>
+          <ul id="totalsList" class="list-group mb-3">
+            <!-- Se mostrarán los totales -->
+          </ul>
+
+          <h4>Historial de Partidas</h4>
+          <ul id="roundsList" class="list-group">
+            <!-- Se mostrarán las partidas registradas -->
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Botón para enviar resumen por WhatsApp -->
+      <button id="shareBtn" class="btn btn-info">Enviar Resumen por WhatsApp</button>
+    </div>
+  </div>
+
+  <!-- Dependencias de Bootstrap y jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Estructura de datos
+    let data = {
+      config: {},
+      rounds: [],
+      totals: {}
+    };
+
+    // Lista de jugadores
+    const players = ["Andrea", "Manolo", "Ricky", "Txus"];
+    // Tarifas según posición: 0€ para el mejor, 0.5€ para el segundo, 1€ para el tercero y 2€ para el cuarto.
+    const payments = [0, 0.5, 1, 2];
+
+    // Cargar datos de localStorage si existen
+    if(localStorage.getItem('continentalData')) {
+      data = JSON.parse(localStorage.getItem('continentalData'));
+      document.getElementById('configSection').style.display = 'none';
+      document.getElementById('gameSection').style.display = 'block';
+      updateTotalsDisplay();
+      updateRoundsDisplay();
+    }
+
+    // Guardar datos en localStorage
+    function saveData() {
+      localStorage.setItem('continentalData', JSON.stringify(data));
+    }
+
+    // Actualizar visualización de totales
+    function updateTotalsDisplay() {
+      const totalsList = document.getElementById('totalsList');
+      totalsList.innerHTML = "";
+      players.forEach(player => {
+        const li = document.createElement('li');
+        li.className = "list-group-item";
+        li.textContent = player + ": " + (data.totals[player] || 0) + "€";
+        totalsList.appendChild(li);
+      });
+    }
+
+    // Actualizar visualización del historial de rondas
+    function updateRoundsDisplay() {
+      const roundsList = document.getElementById('roundsList');
+      roundsList.innerHTML = "";
+      data.rounds.forEach((round, index) => {
+        const li = document.createElement('li');
+        li.className = "list-group-item";
+        li.innerHTML = "<strong>Ronda " + (index+1) + ":</strong> " +
+          players.map(player => player + " - " + round.scores[player] + " pts, paga " + round.payments[player] + "€").join(" | ");
+        roundsList.appendChild(li);
+      });
+    }
+
+    // Manejar el envío del formulario de configuración inicial
+    document.getElementById('configForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      players.forEach(player => {
+        const input = document.getElementById('input' + player);
+        const value = parseFloat(input.value) || 0;
+        data.config[player] = value;
+        // Inicializar totales con la configuración inicial
+        data.totals[player] = value;
+      });
+      saveData();
+      document.getElementById('configSection').style.display = 'none';
+      document.getElementById('gameSection').style.display = 'block';
+      updateTotalsDisplay();
+    });
+
+    // Manejar el envío del formulario de registro de partida
+    document.getElementById('roundForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      let roundScores = {};
+      players.forEach(player => {
+        const input = document.getElementById('score' + player);
+        const value = parseFloat(input.value) || 0;
+        roundScores[player] = value;
+        input.value = ""; // Limpiar campo
+      });
+
+      // Ordenar jugadores según la puntuación (de menor a mayor)
+      let ranking = players.map(player => ({
+        player: player,
+        score: roundScores[player]
+      }));
+      ranking.sort((a, b) => a.score - b.score);
+
+      let roundPayments = {};
+      ranking.forEach((item, index) => {
+        roundPayments[item.player] = payments[index];
+        // Actualizar total acumulado
+        data.totals[item.player] += payments[index];
+      });
+
+      // Agregar la ronda al historial
+      data.rounds.push({
+        scores: roundScores,
+        payments: roundPayments
+      });
+
+      saveData();
+      updateTotalsDisplay();
+      updateRoundsDisplay();
+    });
+
+    // Manejar el botón para compartir resumen por WhatsApp
+    document.getElementById('shareBtn').addEventListener('click', function() {
+      let message = "Resumen Continental:\n\nTotales:\n";
+      players.forEach(player => {
+        message += player + ": " + (data.totals[player] || 0) + "€\n";
+      });
+      message += "\nHistorial de Partidas:\n";
+      data.rounds.forEach((round, index) => {
+        message += "Ronda " + (index+1) + ": ";
+        players.forEach(player => {
+          message += player + " (" + round.scores[player] + " pts, paga " + round.payments[player] + "€) ";
+        });
+        message += "\n";
+      });
+      let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(message);
+      window.open(url, '_blank');
+    });
+  </script>
+</body>
+</html>
