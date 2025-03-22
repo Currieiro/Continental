@@ -83,5 +83,190 @@
                 <input type="number" class="form-control" id="scoreManolo" required>
               </div>
               <div class="form-group col-md-3">
+                <label>Ricky</label>
+                <input type="number" class="form-control" id="scoreRicky" required>
+              </div>
+              <div class="form-group col-md-3">
+                <label>Txus</label>
+                <input type="number" class="form-control" id="scoreTxus" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success">Registrar Partida</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Resumen y Historial -->
+      <div class="card">
+        <div class="card-header">Resumen y Historial</div>
+        <div class="card-body">
+          <h4>Totales Acumulados</h4>
+          <ul id="totalsList" class="list-group mb-3">
+            <!-- Se mostrarán los totales ordenados de menor a mayor -->
+          </ul>
+
+          <h4>Historial de Partidas</h4>
+          <ul id="roundsList" class="list-group">
+            <!-- Se mostrarán las partidas registradas -->
+          </ul>
+        </div>
+      </div>
+      <!-- Botones para compartir y reiniciar -->
+      <div class="mb-3">
+        <button id="shareBtn" class="btn btn-info">Enviar Resumen por WhatsApp</button>
+        <button id="resetBtn" class="btn btn-danger">Reiniciar Marcadores</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dependencias de Bootstrap y jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Estructura de datos
+    let data = {
+      config: {},
+      rounds: [],
+      totals: {}
+    };
+
+    // Lista de jugadores
+    const players = ["Andrea", "Manolo", "Ricky", "Txus"];
+    // Tarifas según posición: 0€ para el mejor, 0.5€ para el segundo, 1€ para el tercero y 2€ para el cuarto.
+    const payments = [0, 0.5, 1, 2];
+
+    // Cargar datos de localStorage si existen
+    if(localStorage.getItem('continentalData')) {
+      data = JSON.parse(localStorage.getItem('continentalData'));
+      document.getElementById('configSection').style.display = 'none';
+      document.getElementById('gameSection').style.display = 'block';
+      updateTotalsDisplay();
+      updateRoundsDisplay();
+    }
+
+    // Función para guardar en localStorage
+    function saveData() {
+      localStorage.setItem('continentalData', JSON.stringify(data));
+    }
+
+    // Función para aplicar animación a un elemento
+    function animateElement(element) {
+      element.classList.add("animate-fade");
+      setTimeout(() => element.classList.remove("animate-fade"), 500);
+    }
+
+    // Actualizar visualización de totales (ordenados de menor a mayor)
+    function updateTotalsDisplay() {
+      const totalsList = document.getElementById('totalsList');
+      totalsList.innerHTML = "";
+      // Crear array de jugadores con su total y ordenarlos
+      let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
+      sortedPlayers.forEach(player => {
+        const li = document.createElement('li');
+        li.className = "list-group-item";
+        li.textContent = player + ": " + (data.totals[player] || 0) + "€";
+        totalsList.appendChild(li);
+      });
+      animateElement(totalsList);
+    }
+
+    // Actualizar visualización del historial de rondas
+    function updateRoundsDisplay() {
+      const roundsList = document.getElementById('roundsList');
+      roundsList.innerHTML = "";
+      data.rounds.forEach((round, index) => {
+        const li = document.createElement('li');
+        li.className = "list-group-item";
+        li.innerHTML = "<strong>Ronda " + (index+1) + ":</strong> " +
+          players.map(player => player + " - " + round.scores[player] + " pts, paga " + round.payments[player] + "€").join(" | ");
+        roundsList.appendChild(li);
+      });
+      animateElement(roundsList);
+    }
+
+    // Manejar el envío del formulario de configuración inicial
+    document.getElementById('configForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      players.forEach(player => {
+        const input = document.getElementById('input' + player);
+        const value = parseFloat(input.value) || 0;
+        data.config[player] = value;
+        // Inicializar totales con la configuración inicial
+        data.totals[player] = value;
+      });
+      saveData();
+      document.getElementById('configSection').style.display = 'none';
+      document.getElementById('gameSection').style.display = 'block';
+      updateTotalsDisplay();
+    });
+
+    // Manejar el envío del formulario de registro de partida
+    document.getElementById('roundForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      let roundScores = {};
+      players.forEach(player => {
+        const input = document.getElementById('score' + player);
+        const value = parseFloat(input.value) || 0;
+        roundScores[player] = value;
+        input.value = ""; // Limpiar el campo
+      });
+
+      // Ordenar jugadores según la puntuación (de menor a mayor)
+      let ranking = players.map(player => ({
+        player: player,
+        score: roundScores[player]
+      }));
+      ranking.sort((a, b) => a.score - b.score);
+
+      let roundPayments = {};
+      ranking.forEach((item, index) => {
+        roundPayments[item.player] = payments[index];
+        // Actualizar total acumulado
+        data.totals[item.player] += payments[index];
+      });
+
+      // Agregar la ronda al historial
+      data.rounds.push({
+        scores: roundScores,
+        payments: roundPayments
+      });
+
+      saveData();
+      updateTotalsDisplay();
+      updateRoundsDisplay();
+    });
+
+    // Manejar el botón para compartir resumen por WhatsApp
+    document.getElementById('shareBtn').addEventListener('click', function() {
+      let message = "Resumen Continental:\n\nTotales:\n";
+      // Usamos el mismo orden que en los totales
+      let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
+      sortedPlayers.forEach(player => {
+        message += player + ": " + (data.totals[player] || 0) + "€\n";
+      });
+      // Se eliminó la línea de "Historial de Partidas:" para que no aparezca al final
+      data.rounds.forEach((round, index) => {
+        message += "Ronda " + (index+1) + ": ";
+        players.forEach(player => {
+          message += player + " (" + round.scores[player] + " pts, paga " + round.payments[player] + "€) ";
+        });
+        message += "\n";
+      });
+      let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(message);
+      window.open(url, '_blank');
+    });
+
+    // Manejar el botón para reiniciar marcadores
+    document.getElementById('resetBtn').addEventListener('click', function() {
+      if(confirm("¿Estás seguro de que deseas reiniciar los marcadores?")) {
+        localStorage.removeItem('continentalData');
+        location.reload();
+      }
+    });
+  </script>
+</body>
+</html>
+
 
 
