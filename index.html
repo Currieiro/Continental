@@ -242,14 +242,17 @@
       updateRoundsDisplay();
     });
 
-    // Manejar el botón para compartir resumen por WhatsApp (solo el último juego detallado)
+    // Manejar el botón para compartir resumen por WhatsApp (incluye totales parciales, total acumulado y detalle de la última ronda)
     document.getElementById('shareBtn').addEventListener('click', function() {
       let message = "Resumen Continental:\n\nTotales:\n";
-      // Mostrar los totales parciales (ordenados de menor a mayor)
+      // Usamos el mismo orden que en los totales parciales
       let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
       sortedPlayers.forEach(player => {
         message += player + ": " + (data.totals[player] || 0) + "€\n";
       });
+      // Calcular total acumulado de los cuatro jugadores
+      let totalAcumulado = players.reduce((sum, player) => sum + (data.totals[player] || 0), 0);
+      message += "TOTAL ACUMULADO: " + totalAcumulado + "€\n";
       
       // Incluir solo el detalle de la última ronda registrada, si existe
       if(data.rounds.length > 0) {
