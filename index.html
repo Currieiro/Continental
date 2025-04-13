@@ -98,7 +98,7 @@
         <div class="card-body">
           <h4>Totales Acumulados</h4>
           <ul id="totalsList" class="list-group mb-3">
-            <!-- Se mostrarán los totales ordenados de menor a mayor -->
+            <!-- Se mostrarán los totales parciales de cada jugador y el total general -->
           </ul>
 
           <h4>Historial de Partidas</h4>
@@ -154,7 +154,7 @@
       setTimeout(() => element.classList.remove("animate-fade"), 500);
     }
 
-    // Actualizar visualización de totales (ordenados de menor a mayor)
+    // Actualizar visualización de totales (ordenados de menor a mayor) e incluir total general
     function updateTotalsDisplay() {
       const totalsList = document.getElementById('totalsList');
       totalsList.innerHTML = "";
@@ -166,6 +166,13 @@
         li.textContent = player + ": " + (data.totals[player] || 0) + "€";
         totalsList.appendChild(li);
       });
+      // Calcular total acumulado de los cuatro jugadores
+      let totalAcumulado = players.reduce((sum, player) => sum + (data.totals[player] || 0), 0);
+      const liTotal = document.createElement('li');
+      liTotal.className = "list-group-item font-weight-bold";
+      liTotal.textContent = "TOTAL ACUMULADO: " + totalAcumulado + "€";
+      totalsList.appendChild(liTotal);
+
       animateElement(totalsList);
     }
 
@@ -235,21 +242,22 @@
       updateRoundsDisplay();
     });
 
-    // Manejar el botón para compartir resumen por WhatsApp
+    // Manejar el botón para compartir resumen por WhatsApp (solo el último juego detallado)
     document.getElementById('shareBtn').addEventListener('click', function() {
       let message = "Resumen Continental:\n\nTotales:\n";
-      // Usamos el mismo orden que en los totales
+      // Mostrar los totales parciales (ordenados de menor a mayor)
       let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
       sortedPlayers.forEach(player => {
         message += player + ": " + (data.totals[player] || 0) + "€\n";
       });
-      data.rounds.forEach((round, index) => {
-        message += "Ronda " + (index+1) + ": ";
-        players.forEach(player => {
-          message += player + " (" + round.scores[player] + " pts, paga " + round.payments[player] + "€) ";
-        });
-        message += "\n";
-      });
+      
+      // Incluir solo el detalle de la última ronda registrada, si existe
+      if(data.rounds.length > 0) {
+        const lastRound = data.rounds[data.rounds.length - 1];
+        message += "\nÚltima Ronda:\n";
+        message += players.map(player => player + " (" + lastRound.scores[player] + " pts, paga " + lastRound.payments[player] + "€)").join(" | ");
+      }
+      
       let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(message);
       window.open(url, '_blank');
     });
