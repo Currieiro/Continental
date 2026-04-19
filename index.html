@@ -65,6 +65,10 @@
       color: #fff;
     }
 
+    .rank-icon {
+      margin: 0 4px 0 2px;
+    }
+
     .summary-line {
       font-weight: 700;
     }
@@ -234,7 +238,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const APP_VERSION = "v1.6.1";
+    const APP_VERSION = "v1.6.2";
 
     const DEFAULT_PLAYER_NAMES = ["Andrea", "Manolo", "Ricky", "Txus"];
     const PLAYER_COUNT = 4;
@@ -345,6 +349,11 @@
       return (index + 1) + "º";
     }
 
+    function getRankIcon(index) {
+      const icons = ["🏆", "🥈", "🥉", "💩"];
+      return icons[index] || "•";
+    }
+
     function getPaymentScale(isPremium) {
       return isPremium ? PREMIUM_PAYMENTS : STANDARD_PAYMENTS;
     }
@@ -421,7 +430,8 @@
         rankMap[playerIndex] = {
           className: getRankClassByIndex(index),
           positionText: getPositionText(index),
-          position: index + 1
+          position: index + 1,
+          icon: getRankIcon(index)
         };
       });
 
@@ -466,7 +476,9 @@
         li.className = "list-group-item";
         li.innerHTML = `
           <span class="player-pill ${rankMap[playerIndex].className}">
-            ${rankMap[playerIndex].positionText} ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}
+            ${rankMap[playerIndex].positionText}
+            <span class="rank-icon">${rankMap[playerIndex].icon}</span>
+            ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}
           </span>
         `;
         totalsList.appendChild(li);
@@ -543,7 +555,9 @@
 
         li.innerHTML = title + ranking.map(playerIndex =>
           `<span class="player-pill ${rankMap[playerIndex].className}">
-            ${rankMap[playerIndex].positionText} ${data.playerNames[playerIndex]} - ${round.scores[playerIndex]} pts, paga ${formatEuro(round.payments[playerIndex])}
+            ${rankMap[playerIndex].positionText}
+            <span class="rank-icon">${rankMap[playerIndex].icon}</span>
+            ${data.playerNames[playerIndex]} - ${round.scores[playerIndex]} pts, paga ${formatEuro(round.payments[playerIndex])}
           </span>`
         ).join("");
 
@@ -658,16 +672,8 @@
       const totalsRanking = getRankingFromTotals();
       const totalsRankMap = buildRankMapFromRanking(totalsRanking);
 
-      const colorEmojiMap = {
-        "rank-red": "🔴",
-        "rank-orange": "🟠",
-        "rank-yellow": "🟡",
-        "rank-green": "🟢"
-      };
-
       totalsRanking.forEach(playerIndex => {
-        const emoji = colorEmojiMap[totalsRankMap[playerIndex].className] || "⚪";
-        message += `${emoji} ${totalsRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}\n`;
+        message += `${totalsRankMap[playerIndex].icon} ${totalsRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}\n`;
       });
 
       message += "\nTOTAL ACUMULADO: " + formatEuro(getTotalAcumulado()) + "\n";
@@ -689,8 +695,7 @@
         message += lastRound.premium ? "\nÚltima Ronda (Premium):\n" : "\nÚltima Ronda:\n";
 
         message += roundRanking.map(playerIndex => {
-          const emoji = colorEmojiMap[roundRankMap[playerIndex].className] || "⚪";
-          return `${emoji} ${roundRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]} (${lastRound.scores[playerIndex]} pts, paga ${formatEuro(lastRound.payments[playerIndex])})`;
+          return `${roundRankMap[playerIndex].icon} ${roundRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]} (${lastRound.scores[playerIndex]} pts, paga ${formatEuro(lastRound.payments[playerIndex])})`;
         }).join(" | ");
       }
 
