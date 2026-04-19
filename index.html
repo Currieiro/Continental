@@ -282,7 +282,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const APP_VERSION = "v1.6.4";
+    const APP_VERSION = "v1.6.5";
 
     const DEFAULT_PLAYER_NAMES = ["Andrea", "Manolo", "Ricky", "Txus"];
     const PLAYER_COUNT = 4;
@@ -398,11 +398,13 @@
       setTimeout(() => element.classList.remove("animate-fade"), 500);
     }
 
-    function getRankClassByIndex(index) {
+    // Colores: peor -> rojo, mejor -> verde
+    function getSeverityColorClassByIndex(index) {
       const rankClasses = ["rank-red", "rank-orange", "rank-yellow", "rank-green"];
       return rankClasses[index] || "rank-green";
     }
 
+    // Iconos y puesto: mejor -> trofeo, peor -> caca
     function getPositionText(index) {
       return (index + 1) + "º";
     }
@@ -416,7 +418,22 @@
       return isPremium ? PREMIUM_PAYMENTS : STANDARD_PAYMENTS;
     }
 
-    function getRankingFromScores(scores) {
+    // Clasificación de una ronda: menos puntos = mejor
+    function getPlacementRankingFromScores(scores) {
+      return [0, 1, 2, 3].sort((a, b) => {
+        const scoreA = parseFloat(scores[a]) || 0;
+        const scoreB = parseFloat(scores[b]) || 0;
+
+        if (scoreA !== scoreB) {
+          return scoreA - scoreB;
+        }
+
+        return a - b;
+      });
+    }
+
+    // Severidad de una ronda: más puntos = peor
+    function getSeverityRankingFromScores(scores) {
       return [0, 1, 2, 3].sort((a, b) => {
         const scoreA = parseFloat(scores[a]) || 0;
         const scoreB = parseFloat(scores[b]) || 0;
@@ -431,11 +448,11 @@
 
     function calculateRoundPayments(scores, isPremium) {
       const paymentScale = getPaymentScale(isPremium);
-      const ranking = getRankingFromScores(scores);
+      const severityRanking = getSeverityRankingFromScores(scores);
       const payments = [0, 0, 0, 0];
 
-      ranking.forEach((playerIndex, rankIndex) => {
-        payments[playerIndex] = paymentScale[rankIndex] || 0;
+      severityRanking.forEach((playerIndex, severityIndex) => {
+        payments[playerIndex] = paymentScale[severityIndex] || 0;
       });
 
       return payments;
@@ -477,7 +494,20 @@
       return baseTotals.map((value, index) => value + adjustments[index]);
     }
 
-    function getRankingFromTotals() {
+    // Clasificación general: menos acumulado = mejor
+    function getPlacementRankingFromTotals() {
+      const totals = getTotalsArray();
+
+      return [0, 1, 2, 3].sort((a, b) => {
+        if (totals[a] !== totals[b]) {
+          return totals[a] - totals[b];
+        }
+        return a - b;
+      });
+    }
+
+    // Severidad general: más acumulado = peor
+    function getSeverityRankingFromTotals() {
       const totals = getTotalsArray();
 
       return [0, 1, 2, 3].sort((a, b) => {
@@ -488,19 +518,28 @@
       });
     }
 
-    function buildRankMapFromRanking(ranking) {
-      const rankMap = {};
+    function buildPlacementMapFromRanking(ranking) {
+      const placementMap = {};
 
       ranking.forEach((playerIndex, index) => {
-        rankMap[playerIndex] = {
-          className: getRankClassByIndex(index),
+        placementMap[playerIndex] = {
           positionText: getPositionText(index),
           position: index + 1,
           icon: getRankIcon(index)
         };
       });
 
-      return rankMap;
+      return placementMap;
+    }
+
+    function buildSeverityColorMapFromRanking(ranking) {
+      const colorMap = {};
+
+      ranking.forEach((playerIndex, index) => {
+        colorMap[playerIndex] = getSeverityColorClassByIndex(index);
+      });
+
+      return colorMap;
     }
 
     function getTotalAcumulado() {
@@ -552,16 +591,18 @@
       totalsList.innerHTML = "";
 
       const totals = getTotalsArray();
-      const ranking = getRankingFromTotals();
-      const rankMap = buildRankMapFromRanking(ranking);
+      const placementRanking = getPlacementRankingFromTotals();
+      const severityRanking = getSeverityRankingFromTotals();
+      const placementMap = buildPlacementMapFromRanking(placementRanking);
+      const colorMap = buildSeverityColorMapFromRanking(severityRanking);
 
-      ranking.forEach(playerIndex => {
+      placementRanking.forEach(playerIndex => {
         const li = document.createElement('li');
         li.className = "list-group-item";
         li.innerHTML = `
-          <span class="player-pill ${rankMap[playerIndex].className}">
-            ${rankMap[playerIndex].positionText}
-            <span class="rank-icon">${rankMap[playerIndex].icon}</span>
+          <span class="player-pill ${colorMap[playerIndex]}">
+            ${placementMap[playerIndex].positionText}
+            <span class="rank-icon">${placementMap[playerIndex].icon}</span>
             ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}
           </span>
         `;
@@ -627,8 +668,10 @@
       }
 
       data.rounds.forEach((round, index) => {
-        const ranking = getRankingFromScores(round.scores || [0, 0, 0, 0]);
-        const rankMap = buildRankMapFromRanking(ranking);
+        const placementRanking = getPlacementRankingFromScores(round.scores || [0, 0, 0, 0]);
+        const severityRanking = getSeverityRankingFromScores(round.scores || [0, 0, 0, 0]);
+        const placementMap = buildPlacementMapFromRanking(placementRanking);
+        const colorMap = buildSeverityColorMapFromRanking(severityRanking);
 
         const li = document.createElement('li');
         li.className = "list-group-item";
@@ -637,10 +680,10 @@
           ? `<strong>Ronda ${index + 1}:</strong> <span class="badge badge-danger round-badge">Premium</span><br>`
           : `<strong>Ronda ${index + 1}:</strong><br>`;
 
-        li.innerHTML = title + ranking.map(playerIndex =>
-          `<span class="player-pill ${rankMap[playerIndex].className}">
-            ${rankMap[playerIndex].positionText}
-            <span class="rank-icon">${rankMap[playerIndex].icon}</span>
+        li.innerHTML = title + placementRanking.map(playerIndex =>
+          `<span class="player-pill ${colorMap[playerIndex]}">
+            ${placementMap[playerIndex].positionText}
+            <span class="rank-icon">${placementMap[playerIndex].icon}</span>
             ${data.playerNames[playerIndex]} - ${round.scores[playerIndex]} pts, paga ${formatEuro(round.payments[playerIndex])}
           </span>`
         ).join("");
@@ -783,11 +826,11 @@
       let message = "Resumen Continental:\n\nTotales:\n";
 
       const totals = getTotalsArray();
-      const totalsRanking = getRankingFromTotals();
-      const totalsRankMap = buildRankMapFromRanking(totalsRanking);
+      const placementRanking = getPlacementRankingFromTotals();
+      const placementMap = buildPlacementMapFromRanking(placementRanking);
 
-      totalsRanking.forEach(playerIndex => {
-        message += `${totalsRankMap[playerIndex].icon} ${totalsRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}\n`;
+      placementRanking.forEach(playerIndex => {
+        message += `${placementMap[playerIndex].icon} ${placementMap[playerIndex].positionText} ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}\n`;
       });
 
       message += "\nTOTAL ACUMULADO: " + formatEuro(getTotalAcumulado()) + "\n";
@@ -803,13 +846,13 @@
 
       if (data.rounds.length > 0) {
         const lastRound = data.rounds[data.rounds.length - 1];
-        const roundRanking = getRankingFromScores(lastRound.scores || [0, 0, 0, 0]);
-        const roundRankMap = buildRankMapFromRanking(roundRanking);
+        const placementRankingRound = getPlacementRankingFromScores(lastRound.scores || [0, 0, 0, 0]);
+        const placementMapRound = buildPlacementMapFromRanking(placementRankingRound);
 
         message += lastRound.premium ? "\nÚltima Ronda (Premium):\n" : "\nÚltima Ronda:\n";
 
-        message += roundRanking.map(playerIndex => {
-          return `${roundRankMap[playerIndex].icon} ${roundRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]} (${lastRound.scores[playerIndex]} pts, paga ${formatEuro(lastRound.payments[playerIndex])})`;
+        message += placementRankingRound.map(playerIndex => {
+          return `${placementMapRound[playerIndex].icon} ${placementMapRound[playerIndex].positionText} ${data.playerNames[playerIndex]} (${lastRound.scores[playerIndex]} pts, paga ${formatEuro(lastRound.payments[playerIndex])})`;
         }).join(" | ");
       }
 
