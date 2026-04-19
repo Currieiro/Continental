@@ -119,26 +119,26 @@
 
     <!-- Configuración inicial -->
     <div id="configSection" class="card">
-      <div class="card-header">Configuración Inicial</div>
+      <div class="card-header">Configurar jugadores</div>
       <div class="card-body">
         <form id="configForm">
           <div class="form-group">
-            <label>Andrea</label>
-            <input type="number" step="0.1" class="form-control" id="inputAndrea" required>
+            <label for="playerName0">Jugador 1</label>
+            <input type="text" class="form-control" id="playerName0" maxlength="20" required>
           </div>
           <div class="form-group">
-            <label>Manolo</label>
-            <input type="number" step="0.1" class="form-control" id="inputManolo" required>
+            <label for="playerName1">Jugador 2</label>
+            <input type="text" class="form-control" id="playerName1" maxlength="20" required>
           </div>
           <div class="form-group">
-            <label>Ricky</label>
-            <input type="number" step="0.1" class="form-control" id="inputRicky" required>
+            <label for="playerName2">Jugador 3</label>
+            <input type="text" class="form-control" id="playerName2" maxlength="20" required>
           </div>
           <div class="form-group">
-            <label>Txus</label>
-            <input type="number" step="0.1" class="form-control" id="inputTxus" required>
+            <label for="playerName3">Jugador 4</label>
+            <input type="text" class="form-control" id="playerName3" maxlength="20" required>
           </div>
-          <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+          <button type="submit" class="btn btn-primary">Guardar Jugadores</button>
         </form>
       </div>
     </div>
@@ -152,20 +152,20 @@
           <form id="roundForm">
             <div class="form-row">
               <div class="form-group col-md-3">
-                <label>Andrea</label>
-                <input type="number" class="form-control" id="scoreAndrea" required>
+                <label id="scoreLabel0" for="score0">Jugador 1</label>
+                <input type="number" class="form-control" id="score0" required>
               </div>
               <div class="form-group col-md-3">
-                <label>Manolo</label>
-                <input type="number" class="form-control" id="scoreManolo" required>
+                <label id="scoreLabel1" for="score1">Jugador 2</label>
+                <input type="number" class="form-control" id="score1" required>
               </div>
               <div class="form-group col-md-3">
-                <label>Ricky</label>
-                <input type="number" class="form-control" id="scoreRicky" required>
+                <label id="scoreLabel2" for="score2">Jugador 3</label>
+                <input type="number" class="form-control" id="score2" required>
               </div>
               <div class="form-group col-md-3">
-                <label>Txus</label>
-                <input type="number" class="form-control" id="scoreTxus" required>
+                <label id="scoreLabel3" for="score3">Jugador 4</label>
+                <input type="number" class="form-control" id="score3" required>
               </div>
             </div>
 
@@ -188,11 +188,11 @@
           <form id="expenseForm">
             <div class="form-row">
               <div class="form-group col-md-4">
-                <label>Gasto (€)</label>
+                <label for="expenseAmount">Gasto (€)</label>
                 <input type="number" step="0.01" min="0" class="form-control" id="expenseAmount" required>
               </div>
               <div class="form-group col-md-8">
-                <label>Descripción</label>
+                <label for="expenseDescription">Descripción</label>
                 <input type="text" class="form-control" id="expenseDescription" placeholder="Ej.: cafés, tortilla, agua..." required>
               </div>
             </div>
@@ -234,35 +234,83 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const APP_VERSION = "v1.6.0";
+    const APP_VERSION = "v1.6.1";
 
-    const players = ["Andrea", "Manolo", "Ricky", "Txus"];
+    const DEFAULT_PLAYER_NAMES = ["Andrea", "Manolo", "Ricky", "Txus"];
+    const PLAYER_COUNT = 4;
 
     const STANDARD_PAYMENTS = [2, 1, 0.5, 0];
     const PREMIUM_PAYMENTS = [5, 2.5, 1, 0];
 
     const defaultData = {
-      config: {},
+      setupDone: false,
+      playerNames: [...DEFAULT_PLAYER_NAMES],
       rounds: [],
-      totals: {},
       expenses: []
     };
+
+    function sanitizePlayerNames(names) {
+      if (!Array.isArray(names)) return [...DEFAULT_PLAYER_NAMES];
+
+      const cleaned = [];
+      for (let i = 0; i < PLAYER_COUNT; i++) {
+        const value = (names[i] || "").toString().trim();
+        cleaned.push(value || DEFAULT_PLAYER_NAMES[i]);
+      }
+      return cleaned;
+    }
+
+    function migrateLegacyData(saved) {
+      const legacyNames =
+        saved && Array.isArray(saved.playerNames) ? sanitizePlayerNames(saved.playerNames)
+        : saved && saved.config && Object.keys(saved.config).length === PLAYER_COUNT ? Object.keys(saved.config)
+        : [...DEFAULT_PLAYER_NAMES];
+
+      const rounds = Array.isArray(saved.rounds) ? saved.rounds.map(round => {
+        let scoresArray = [];
+        let paymentsArray = [];
+
+        if (Array.isArray(round.scores)) {
+          scoresArray = round.scores.slice(0, PLAYER_COUNT).map(v => parseFloat(v) || 0);
+        } else {
+          scoresArray = legacyNames.map(name => parseFloat(round?.scores?.[name]) || 0);
+        }
+
+        if (Array.isArray(round.payments)) {
+          paymentsArray = round.payments.slice(0, PLAYER_COUNT).map(v => parseFloat(v) || 0);
+        } else {
+          paymentsArray = legacyNames.map(name => parseFloat(round?.payments?.[name]) || 0);
+        }
+
+        return {
+          scores: scoresArray,
+          payments: paymentsArray,
+          premium: !!round.premium
+        };
+      }) : [];
+
+      return {
+        setupDone: !!saved.setupDone || !!saved.config || !!saved.playerNames || rounds.length > 0 || (Array.isArray(saved.expenses) && saved.expenses.length > 0),
+        playerNames: legacyNames,
+        rounds: rounds,
+        expenses: Array.isArray(saved.expenses) ? saved.expenses : []
+      };
+    }
 
     function loadData() {
       try {
         const saved = JSON.parse(localStorage.getItem('continentalData'));
-
         if (!saved) {
           return JSON.parse(JSON.stringify(defaultData));
         }
 
+        const migrated = migrateLegacyData(saved);
+
         return {
-          ...defaultData,
-          ...saved,
-          config: saved.config || {},
-          rounds: Array.isArray(saved.rounds) ? saved.rounds : [],
-          totals: saved.totals || {},
-          expenses: Array.isArray(saved.expenses) ? saved.expenses : []
+          setupDone: migrated.setupDone,
+          playerNames: sanitizePlayerNames(migrated.playerNames),
+          rounds: Array.isArray(migrated.rounds) ? migrated.rounds : [],
+          expenses: Array.isArray(migrated.expenses) ? migrated.expenses : []
         };
       } catch (e) {
         return JSON.parse(JSON.stringify(defaultData));
@@ -288,10 +336,6 @@
       setTimeout(() => element.classList.remove("animate-fade"), 500);
     }
 
-    function getPlayerOrderIndex(player) {
-      return players.indexOf(player);
-    }
-
     function getRankClassByIndex(index) {
       const rankClasses = ["rank-red", "rank-orange", "rank-yellow", "rank-green"];
       return rankClasses[index] || "rank-green";
@@ -301,45 +345,80 @@
       return (index + 1) + "º";
     }
 
-    function hasCompleteConfig() {
-      return players.every(player => data.config[player] !== undefined);
-    }
-
     function getPaymentScale(isPremium) {
       return isPremium ? PREMIUM_PAYMENTS : STANDARD_PAYMENTS;
     }
 
     function getRankingFromScores(scores) {
-      return players.slice().sort((a, b) => {
+      return [0, 1, 2, 3].sort((a, b) => {
         const scoreA = parseFloat(scores[a]) || 0;
         const scoreB = parseFloat(scores[b]) || 0;
 
         if (scoreB !== scoreA) {
-          return scoreB - scoreA; // más puntos = paga más
+          return scoreB - scoreA;
         }
 
-        return getPlayerOrderIndex(a) - getPlayerOrderIndex(b);
+        return a - b;
       });
     }
 
-    function getRankingFromTotals() {
-      return players.slice().sort((a, b) => {
-        const totalA = parseFloat(data.totals[a]) || 0;
-        const totalB = parseFloat(data.totals[b]) || 0;
+    function calculateRoundPayments(scores, isPremium) {
+      const paymentScale = getPaymentScale(isPremium);
+      const ranking = getRankingFromScores(scores);
+      const payments = [0, 0, 0, 0];
 
-        if (totalB !== totalA) {
-          return totalB - totalA;
+      ranking.forEach((playerIndex, rankIndex) => {
+        payments[playerIndex] = paymentScale[rankIndex] || 0;
+      });
+
+      return payments;
+    }
+
+    function normalizeRounds() {
+      data.rounds = (data.rounds || []).map(round => {
+        const scores = Array.isArray(round.scores)
+          ? round.scores.slice(0, PLAYER_COUNT).map(v => parseFloat(v) || 0)
+          : [0, 0, 0, 0];
+
+        const premium = !!round.premium;
+        const payments = calculateRoundPayments(scores, premium);
+
+        return {
+          scores,
+          payments,
+          premium
+        };
+      });
+    }
+
+    function getTotalsArray() {
+      const totals = [0, 0, 0, 0];
+
+      (data.rounds || []).forEach(round => {
+        for (let i = 0; i < PLAYER_COUNT; i++) {
+          totals[i] += parseFloat(round.payments[i]) || 0;
         }
+      });
 
-        return getPlayerOrderIndex(a) - getPlayerOrderIndex(b);
+      return totals;
+    }
+
+    function getRankingFromTotals() {
+      const totals = getTotalsArray();
+
+      return [0, 1, 2, 3].sort((a, b) => {
+        if (totals[b] !== totals[a]) {
+          return totals[b] - totals[a];
+        }
+        return a - b;
       });
     }
 
     function buildRankMapFromRanking(ranking) {
       const rankMap = {};
 
-      ranking.forEach((player, index) => {
-        rankMap[player] = {
+      ranking.forEach((playerIndex, index) => {
+        rankMap[playerIndex] = {
           className: getRankClassByIndex(index),
           positionText: getPositionText(index),
           position: index + 1
@@ -349,52 +428,8 @@
       return rankMap;
     }
 
-    function calculateRoundPayments(scores, isPremium) {
-      const paymentScale = getPaymentScale(isPremium);
-      const ranking = getRankingFromScores(scores);
-      const roundPayments = {};
-
-      ranking.forEach((player, index) => {
-        roundPayments[player] = paymentScale[index] || 0;
-      });
-
-      return roundPayments;
-    }
-
-    function recalculateTotalsFromHistory() {
-      if (!hasCompleteConfig()) {
-        return;
-      }
-
-      const recalculatedTotals = {};
-
-      players.forEach(player => {
-        recalculatedTotals[player] = parseFloat(data.config[player]) || 0;
-      });
-
-      data.rounds = (data.rounds || []).map(round => {
-        const safeScores = round.scores || {};
-        const isPremium = !!round.premium;
-        const recalculatedPayments = calculateRoundPayments(safeScores, isPremium);
-
-        players.forEach(player => {
-          recalculatedTotals[player] += parseFloat(recalculatedPayments[player]) || 0;
-        });
-
-        return {
-          ...round,
-          premium: isPremium,
-          payments: recalculatedPayments
-        };
-      });
-
-      data.totals = recalculatedTotals;
-    }
-
     function getTotalAcumulado() {
-      return players.reduce((sum, player) => {
-        return sum + (parseFloat(data.totals[player]) || 0);
-      }, 0);
+      return getTotalsArray().reduce((sum, value) => sum + value, 0);
     }
 
     function getTotalGastos() {
@@ -407,19 +442,31 @@
       return getTotalAcumulado() - getTotalGastos();
     }
 
+    function renderPlayerNames() {
+      for (let i = 0; i < PLAYER_COUNT; i++) {
+        const name = data.playerNames[i] || DEFAULT_PLAYER_NAMES[i];
+        const configInput = document.getElementById("playerName" + i);
+        const scoreLabel = document.getElementById("scoreLabel" + i);
+
+        if (configInput) configInput.value = name;
+        if (scoreLabel) scoreLabel.textContent = name;
+      }
+    }
+
     function updateTotalsDisplay() {
       const totalsList = document.getElementById('totalsList');
       totalsList.innerHTML = "";
 
+      const totals = getTotalsArray();
       const ranking = getRankingFromTotals();
       const rankMap = buildRankMapFromRanking(ranking);
 
-      ranking.forEach(player => {
+      ranking.forEach(playerIndex => {
         const li = document.createElement('li');
         li.className = "list-group-item";
         li.innerHTML = `
-          <span class="player-pill ${rankMap[player].className}">
-            ${rankMap[player].positionText} ${player}: ${formatEuro(data.totals[player] || 0)}
+          <span class="player-pill ${rankMap[playerIndex].className}">
+            ${rankMap[playerIndex].positionText} ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}
           </span>
         `;
         totalsList.appendChild(li);
@@ -484,7 +531,7 @@
       }
 
       data.rounds.forEach((round, index) => {
-        const ranking = getRankingFromScores(round.scores || {});
+        const ranking = getRankingFromScores(round.scores || [0, 0, 0, 0]);
         const rankMap = buildRankMapFromRanking(ranking);
 
         const li = document.createElement('li');
@@ -494,13 +541,11 @@
           ? `<strong>Ronda ${index + 1}:</strong> <span class="badge badge-danger round-badge">Premium</span><br>`
           : `<strong>Ronda ${index + 1}:</strong><br>`;
 
-        li.innerHTML =
-          title +
-          ranking.map(player =>
-            `<span class="player-pill ${rankMap[player].className}">
-              ${rankMap[player].positionText} ${player} - ${round.scores[player]} pts, paga ${formatEuro(round.payments[player])}
-            </span>`
-          ).join("");
+        li.innerHTML = title + ranking.map(playerIndex =>
+          `<span class="player-pill ${rankMap[playerIndex].className}">
+            ${rankMap[playerIndex].positionText} ${data.playerNames[playerIndex]} - ${round.scores[playerIndex]} pts, paga ${formatEuro(round.payments[playerIndex])}
+          </span>`
+        ).join("");
 
         roundsList.appendChild(li);
       });
@@ -510,39 +555,38 @@
 
     function initApp() {
       updateVersionDisplay();
+      renderPlayerNames();
 
-      if (hasCompleteConfig()) {
+      if (data.setupDone) {
         document.getElementById('configSection').style.display = 'none';
         document.getElementById('gameSection').style.display = 'block';
         updateTotalsDisplay();
         updateExpensesDisplay();
         updateRoundsDisplay();
+      } else {
+        document.getElementById('configSection').style.display = 'block';
+        document.getElementById('gameSection').style.display = 'none';
       }
     }
 
-    recalculateTotalsFromHistory();
+    normalizeRounds();
     saveData();
     initApp();
 
     document.getElementById('configForm').addEventListener('submit', function(e) {
       e.preventDefault();
 
-      players.forEach(player => {
-        const input = document.getElementById('input' + player);
-        const value = parseFloat(input.value) || 0;
-        data.config[player] = value;
-      });
-
-      if (!Array.isArray(data.rounds)) {
-        data.rounds = [];
+      const newNames = [];
+      for (let i = 0; i < PLAYER_COUNT; i++) {
+        const value = document.getElementById("playerName" + i).value.trim();
+        newNames.push(value || DEFAULT_PLAYER_NAMES[i]);
       }
 
-      if (!Array.isArray(data.expenses)) {
-        data.expenses = [];
-      }
+      data.playerNames = sanitizePlayerNames(newNames);
+      data.setupDone = true;
 
-      recalculateTotalsFromHistory();
       saveData();
+      renderPlayerNames();
 
       document.getElementById('configSection').style.display = 'none';
       document.getElementById('gameSection').style.display = 'block';
@@ -556,31 +600,28 @@
     document.getElementById('roundForm').addEventListener('submit', function(e) {
       e.preventDefault();
 
-      const roundScores = {};
+      const scores = [];
       const isPremium = document.getElementById('premiumRound').checked;
 
-      players.forEach(player => {
-        const input = document.getElementById('score' + player);
-        const value = parseFloat(input.value) || 0;
-        roundScores[player] = value;
+      for (let i = 0; i < PLAYER_COUNT; i++) {
+        const input = document.getElementById("score" + i);
+        scores.push(parseFloat(input.value) || 0);
         input.value = "";
-      });
+      }
 
-      const roundPayments = calculateRoundPayments(roundScores, isPremium);
+      const payments = calculateRoundPayments(scores, isPremium);
 
       data.rounds.push({
-        scores: roundScores,
-        payments: roundPayments,
+        scores,
+        payments,
         premium: isPremium
       });
 
       document.getElementById('premiumRound').checked = false;
 
-      recalculateTotalsFromHistory();
       saveData();
       updateTotalsDisplay();
       updateRoundsDisplay();
-      updateVersionDisplay();
     });
 
     document.getElementById('expenseForm').addEventListener('submit', function(e) {
@@ -608,11 +649,14 @@
       saveData();
       updateExpensesDisplay();
       updateTotalsDisplay();
-      updateVersionDisplay();
     });
 
     document.getElementById('shareBtn').addEventListener('click', function() {
       let message = "Resumen Continental:\n\nTotales:\n";
+
+      const totals = getTotalsArray();
+      const totalsRanking = getRankingFromTotals();
+      const totalsRankMap = buildRankMapFromRanking(totalsRanking);
 
       const colorEmojiMap = {
         "rank-red": "🔴",
@@ -621,12 +665,9 @@
         "rank-green": "🟢"
       };
 
-      const totalsRanking = getRankingFromTotals();
-      const totalsRankMap = buildRankMapFromRanking(totalsRanking);
-
-      totalsRanking.forEach(player => {
-        const emoji = colorEmojiMap[totalsRankMap[player].className] || "⚪";
-        message += `${emoji} ${totalsRankMap[player].positionText} ${player}: ${formatEuro(data.totals[player] || 0)}\n`;
+      totalsRanking.forEach(playerIndex => {
+        const emoji = colorEmojiMap[totalsRankMap[playerIndex].className] || "⚪";
+        message += `${emoji} ${totalsRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]}: ${formatEuro(totals[playerIndex])}\n`;
       });
 
       message += "\nTOTAL ACUMULADO: " + formatEuro(getTotalAcumulado()) + "\n";
@@ -642,14 +683,14 @@
 
       if (data.rounds.length > 0) {
         const lastRound = data.rounds[data.rounds.length - 1];
-        const roundRanking = getRankingFromScores(lastRound.scores || {});
+        const roundRanking = getRankingFromScores(lastRound.scores || [0, 0, 0, 0]);
         const roundRankMap = buildRankMapFromRanking(roundRanking);
 
         message += lastRound.premium ? "\nÚltima Ronda (Premium):\n" : "\nÚltima Ronda:\n";
 
-        message += roundRanking.map(player => {
-          const emoji = colorEmojiMap[roundRankMap[player].className] || "⚪";
-          return `${emoji} ${roundRankMap[player].positionText} ${player} (${lastRound.scores[player]} pts, paga ${formatEuro(lastRound.payments[player])})`;
+        message += roundRanking.map(playerIndex => {
+          const emoji = colorEmojiMap[roundRankMap[playerIndex].className] || "⚪";
+          return `${emoji} ${roundRankMap[playerIndex].positionText} ${data.playerNames[playerIndex]} (${lastRound.scores[playerIndex]} pts, paga ${formatEuro(lastRound.payments[playerIndex])})`;
         }).join(" | ");
       }
 
