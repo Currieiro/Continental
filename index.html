@@ -14,17 +14,74 @@
     body {
       padding: 20px;
       background: #f0f8ff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Arial, sans-serif;
     }
+
     .card {
       margin-bottom: 20px;
+      border-radius: 14px;
+      overflow: hidden;
     }
+
+    .card-header {
+      font-weight: 600;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
     .animate-fade {
       animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .player-pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      margin: 4px 6px 4px 0;
+      font-size: 0.95rem;
+    }
+
+    .rank-red {
+      background-color: #dc3545;
+      color: #fff;
+    }
+
+    .rank-orange {
+      background-color: #fd7e14;
+      color: #fff;
+    }
+
+    .rank-yellow {
+      background-color: #ffc107;
+      color: #212529;
+    }
+
+    .rank-green {
+      background-color: #28a745;
+      color: #fff;
+    }
+
+    .summary-line {
+      font-weight: 700;
+    }
+
+    .legend-box {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .legend-item {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -32,7 +89,7 @@
   <div class="container">
     <h1 class="text-center mb-4">Continental: los novios y sus mujeres</h1>
 
-    <!-- Sección de Configuración Inicial -->
+    <!-- Configuración inicial -->
     <div id="configSection" class="card">
       <div class="card-header">Configuración Inicial</div>
       <div class="card-body">
@@ -58,9 +115,9 @@
       </div>
     </div>
 
-    <!-- Sección de Registro de Partidas y Resumen -->
+    <!-- Sección de juego -->
     <div id="gameSection" style="display: none;">
-      <!-- Registro de Partida -->
+      <!-- Registro de partida -->
       <div class="card">
         <div class="card-header">Registrar Partida</div>
         <div class="card-body">
@@ -88,7 +145,7 @@
         </div>
       </div>
 
-      <!-- Registro de Gasto -->
+      <!-- Registro de gasto -->
       <div class="card">
         <div class="card-header">Registrar Gasto</div>
         <div class="card-body">
@@ -100,7 +157,7 @@
               </div>
               <div class="form-group col-md-8">
                 <label>Descripción</label>
-                <input type="text" class="form-control" id="expenseDescription" placeholder="Ej.: cafés, pincho de tortilla, agua..." required>
+                <input type="text" class="form-control" id="expenseDescription" placeholder="Ej.: cafés, tortilla, agua..." required>
               </div>
             </div>
             <button type="submit" class="btn btn-warning">Añadir Gasto</button>
@@ -108,10 +165,17 @@
         </div>
       </div>
 
-      <!-- Resumen y Historial -->
+      <!-- Resumen e historial -->
       <div class="card">
         <div class="card-header">Resumen y Historial</div>
         <div class="card-body">
+          <div class="legend-box">
+            <span class="legend-item rank-red">Más paga</span>
+            <span class="legend-item rank-orange">2º</span>
+            <span class="legend-item rank-yellow">3º</span>
+            <span class="legend-item rank-green">Menos paga</span>
+          </div>
+
           <h4>Totales Acumulados</h4>
           <ul id="totalsList" class="list-group mb-3"></ul>
 
@@ -126,6 +190,7 @@
       <div class="mb-3">
         <button id="shareBtn" class="btn btn-info">Enviar Resumen por WhatsApp</button>
       </div>
+
       <div class="mb-3">
         <button id="resetBtn" class="btn btn-danger">Reiniciar Marcadores</button>
       </div>
@@ -136,36 +201,45 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    let data = {
+    const players = ["Andrea", "Manolo", "Ricky", "Txus"];
+    const payments = [0, 0.5, 1, 2];
+
+    const defaultData = {
       config: {},
       rounds: [],
       totals: {},
       expenses: []
     };
 
-    const players = ["Andrea", "Manolo", "Ricky", "Txus"];
-    const payments = [0, 0.5, 1, 2];
+    function loadData() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('continentalData'));
 
-    function formatEuro(value) {
-      return (parseFloat(value) || 0).toFixed(2).replace('.', ',') + "€";
-    }
+        if (!saved) {
+          return JSON.parse(JSON.stringify(defaultData));
+        }
 
-    if (localStorage.getItem('continentalData')) {
-      data = JSON.parse(localStorage.getItem('continentalData'));
-
-      if (!data.expenses) {
-        data.expenses = [];
+        return {
+          ...defaultData,
+          ...saved,
+          config: saved.config || {},
+          rounds: Array.isArray(saved.rounds) ? saved.rounds : [],
+          totals: saved.totals || {},
+          expenses: Array.isArray(saved.expenses) ? saved.expenses : []
+        };
+      } catch (e) {
+        return JSON.parse(JSON.stringify(defaultData));
       }
-
-      document.getElementById('configSection').style.display = 'none';
-      document.getElementById('gameSection').style.display = 'block';
-      updateTotalsDisplay();
-      updateExpensesDisplay();
-      updateRoundsDisplay();
     }
+
+    let data = loadData();
 
     function saveData() {
       localStorage.setItem('continentalData', JSON.stringify(data));
+    }
+
+    function formatEuro(value) {
+      return (parseFloat(value) || 0).toFixed(2).replace('.', ',') + "€";
     }
 
     function animateElement(element) {
@@ -173,24 +247,102 @@
       setTimeout(() => element.classList.remove("animate-fade"), 500);
     }
 
+    function getTotalAcumulado() {
+      return players.reduce((sum, player) => {
+        return sum + (parseFloat(data.totals[player]) || 0);
+      }, 0);
+    }
+
+    function getTotalGastos() {
+      return (data.expenses || []).reduce((sum, expense) => {
+        return sum + (parseFloat(expense.amount) || 0);
+      }, 0);
+    }
+
+    function getSaldo() {
+      return getTotalAcumulado() - getTotalGastos();
+    }
+
+    function getRankClassByIndex(index) {
+      const rankClasses = ["rank-red", "rank-orange", "rank-yellow", "rank-green"];
+      return rankClasses[index] || "rank-green";
+    }
+
+    function getPlayerOrderIndex(player) {
+      return players.indexOf(player);
+    }
+
+    function getTotalsRankMap() {
+      const ranking = players.slice().sort((a, b) => {
+        const totalA = parseFloat(data.totals[a]) || 0;
+        const totalB = parseFloat(data.totals[b]) || 0;
+
+        if (totalB !== totalA) {
+          return totalB - totalA; // más paga primero
+        }
+
+        return getPlayerOrderIndex(a) - getPlayerOrderIndex(b);
+      });
+
+      const rankMap = {};
+      ranking.forEach((player, index) => {
+        rankMap[player] = getRankClassByIndex(index);
+      });
+
+      return rankMap;
+    }
+
+    function getRoundRankMap(round) {
+      const ranking = players.slice().sort((a, b) => {
+        const payA = parseFloat(round.payments[a]) || 0;
+        const payB = parseFloat(round.payments[b]) || 0;
+
+        if (payB !== payA) {
+          return payB - payA; // más paga primero
+        }
+
+        return getPlayerOrderIndex(a) - getPlayerOrderIndex(b);
+      });
+
+      const rankMap = {};
+      ranking.forEach((player, index) => {
+        rankMap[player] = getRankClassByIndex(index);
+      });
+
+      return rankMap;
+    }
+
     function updateTotalsDisplay() {
       const totalsList = document.getElementById('totalsList');
       totalsList.innerHTML = "";
 
-      let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
+      const totalsRankMap = getTotalsRankMap();
 
-      sortedPlayers.forEach(player => {
+      players.forEach(player => {
         const li = document.createElement('li');
         li.className = "list-group-item";
-        li.textContent = player + ": " + formatEuro(data.totals[player] || 0);
+        li.innerHTML = `
+          <span class="player-pill ${totalsRankMap[player]}">
+            ${player}: ${formatEuro(data.totals[player] || 0)}
+          </span>
+        `;
         totalsList.appendChild(li);
       });
 
-      let totalAcumulado = players.reduce((sum, player) => sum + (data.totals[player] || 0), 0);
       const liTotal = document.createElement('li');
-      liTotal.className = "list-group-item font-weight-bold";
-      liTotal.textContent = "TOTAL ACUMULADO: " + formatEuro(totalAcumulado);
+      liTotal.className = "list-group-item summary-line";
+      liTotal.textContent = "TOTAL ACUMULADO: " + formatEuro(getTotalAcumulado());
       totalsList.appendChild(liTotal);
+
+      const liGastos = document.createElement('li');
+      liGastos.className = "list-group-item summary-line";
+      liGastos.textContent = "GASTOS: " + formatEuro(getTotalGastos());
+      totalsList.appendChild(liGastos);
+
+      const liSaldo = document.createElement('li');
+      liSaldo.className = "list-group-item summary-line";
+      liSaldo.textContent = "SALDO: " + formatEuro(getSaldo());
+      totalsList.appendChild(liSaldo);
 
       animateElement(totalsList);
     }
@@ -211,14 +363,13 @@
       data.expenses.forEach((expense, index) => {
         const li = document.createElement('li');
         li.className = "list-group-item";
-        li.innerHTML = "<strong>Gasto " + (index + 1) + ":</strong> " + formatEuro(expense.amount) + " - " + expense.description;
+        li.innerHTML = `<strong>Gasto ${index + 1}:</strong> ${formatEuro(expense.amount)} - ${expense.description}`;
         expensesList.appendChild(li);
       });
 
-      const totalGastos = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
       const liTotal = document.createElement('li');
-      liTotal.className = "list-group-item font-weight-bold";
-      liTotal.textContent = "TOTAL GASTOS: " + formatEuro(totalGastos);
+      liTotal.className = "list-group-item summary-line";
+      liTotal.textContent = "TOTAL GASTOS: " + formatEuro(getTotalGastos());
       expensesList.appendChild(liTotal);
 
       animateElement(expensesList);
@@ -228,16 +379,46 @@
       const roundsList = document.getElementById('roundsList');
       roundsList.innerHTML = "";
 
-      data.rounds.forEach((round, index) => {
+      if (!data.rounds || data.rounds.length === 0) {
         const li = document.createElement('li');
         li.className = "list-group-item";
-        li.innerHTML = "<strong>Ronda " + (index + 1) + ":</strong> " +
-          players.map(player => player + " - " + round.scores[player] + " pts, paga " + formatEuro(round.payments[player])).join(" | ");
+        li.textContent = "Todavía no hay partidas registradas.";
+        roundsList.appendChild(li);
+        animateElement(roundsList);
+        return;
+      }
+
+      data.rounds.forEach((round, index) => {
+        const roundRankMap = getRoundRankMap(round);
+
+        const li = document.createElement('li');
+        li.className = "list-group-item";
+
+        li.innerHTML =
+          `<strong>Ronda ${index + 1}:</strong><br>` +
+          players.map(player =>
+            `<span class="player-pill ${roundRankMap[player]}">${player} - ${round.scores[player]} pts, paga ${formatEuro(round.payments[player])}</span>`
+          ).join("");
+
         roundsList.appendChild(li);
       });
 
       animateElement(roundsList);
     }
+
+    function initApp() {
+      const hasConfig = players.every(player => data.totals[player] !== undefined);
+
+      if (hasConfig) {
+        document.getElementById('configSection').style.display = 'none';
+        document.getElementById('gameSection').style.display = 'block';
+        updateTotalsDisplay();
+        updateExpensesDisplay();
+        updateRoundsDisplay();
+      }
+    }
+
+    initApp();
 
     document.getElementById('configForm').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -249,7 +430,11 @@
         data.totals[player] = value;
       });
 
-      if (!data.expenses) {
+      if (!Array.isArray(data.rounds)) {
+        data.rounds = [];
+      }
+
+      if (!Array.isArray(data.expenses)) {
         data.expenses = [];
       }
 
@@ -258,12 +443,13 @@
       document.getElementById('gameSection').style.display = 'block';
       updateTotalsDisplay();
       updateExpensesDisplay();
+      updateRoundsDisplay();
     });
 
     document.getElementById('roundForm').addEventListener('submit', function(e) {
       e.preventDefault();
 
-      let roundScores = {};
+      const roundScores = {};
 
       players.forEach(player => {
         const input = document.getElementById('score' + player);
@@ -272,17 +458,23 @@
         input.value = "";
       });
 
-      let ranking = players.map(player => ({
+      const ranking = players.map(player => ({
         player: player,
         score: roundScores[player]
       }));
 
-      ranking.sort((a, b) => a.score - b.score);
+      ranking.sort((a, b) => {
+        if (a.score !== b.score) {
+          return a.score - b.score; // menor puntuación = mejor
+        }
+        return getPlayerOrderIndex(a.player) - getPlayerOrderIndex(b.player);
+      });
 
-      let roundPayments = {};
+      const roundPayments = {};
+
       ranking.forEach((item, index) => {
         roundPayments[item.player] = payments[index];
-        data.totals[item.player] += payments[index];
+        data.totals[item.player] = (parseFloat(data.totals[item.player]) || 0) + payments[index];
       });
 
       data.rounds.push({
@@ -319,43 +511,53 @@
 
       saveData();
       updateExpensesDisplay();
+      updateTotalsDisplay();
     });
 
     document.getElementById('shareBtn').addEventListener('click', function() {
       let message = "Resumen Continental:\n\nTotales:\n";
 
-      let sortedPlayers = players.slice().sort((a, b) => (data.totals[a] || 0) - (data.totals[b] || 0));
-      sortedPlayers.forEach(player => {
-        message += player + ": " + formatEuro(data.totals[player] || 0) + "\n";
+      const totalsRankMap = getTotalsRankMap();
+      const colorEmojiMap = {
+        "rank-red": "🔴",
+        "rank-orange": "🟠",
+        "rank-yellow": "🟡",
+        "rank-green": "🟢"
+      };
+
+      players.forEach(player => {
+        const emoji = colorEmojiMap[totalsRankMap[player]] || "⚪";
+        message += `${emoji} ${player}: ${formatEuro(data.totals[player] || 0)}\n`;
       });
 
-      let totalAcumulado = players.reduce((sum, player) => sum + (data.totals[player] || 0), 0);
-      message += "TOTAL ACUMULADO: " + formatEuro(totalAcumulado) + "\n";
+      message += "\nTOTAL ACUMULADO: " + formatEuro(getTotalAcumulado()) + "\n";
+      message += "GASTOS: " + formatEuro(getTotalGastos()) + "\n";
+      message += "SALDO: " + formatEuro(getSaldo()) + "\n";
 
       if (data.expenses && data.expenses.length > 0) {
-        message += "\nGastos:\n";
+        message += "\nDetalle de gastos:\n";
         data.expenses.forEach((expense, index) => {
           message += (index + 1) + ". " + formatEuro(expense.amount) + " - " + expense.description + "\n";
         });
-
-        const totalGastos = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-        message += "TOTAL GASTOS: " + formatEuro(totalGastos) + "\n";
       }
 
       if (data.rounds.length > 0) {
         const lastRound = data.rounds[data.rounds.length - 1];
+        const roundRankMap = getRoundRankMap(lastRound);
+
         message += "\nÚltima Ronda:\n";
-        message += players.map(player =>
-          player + " (" + lastRound.scores[player] + " pts, paga " + formatEuro(lastRound.payments[player]) + ")"
-        ).join(" | ");
+        message += players.map(player => {
+          const emoji = colorEmojiMap[roundRankMap[player]] || "⚪";
+          return `${emoji} ${player} (${lastRound.scores[player]} pts, paga ${formatEuro(lastRound.payments[player])})`;
+        }).join(" | ");
       }
 
-      let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(message);
-      window.open(url, '_blank');
+      const url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(message);
+      window.open(url, "_blank");
     });
 
     document.getElementById('resetBtn').addEventListener('click', function() {
-      if (confirm("¿Estás seguro de que deseas reiniciar los marcadores?")) {
+      if (confirm("¿Estás seguro de que deseas reiniciar los marcadores y los gastos?")) {
         localStorage.removeItem('continentalData');
         location.reload();
       }
