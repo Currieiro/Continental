@@ -282,13 +282,12 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const APP_VERSION = "v1.6.5";
+    const APP_VERSION = "v1.6.6";
 
-    const DEFAULT_PLAYER_NAMES = ["Andrea", "Manolo", "Ricky", "Txus"];
-    const PLAYER_COUNT = 4;
+const STANDARD_PAYMENTS = [2, 1, 0.5, 0];
 
-    const STANDARD_PAYMENTS = [2, 1, 0.5, 0];
-    const PREMIUM_PAYMENTS = [5, 2.5, 1, 0];
+// Orden interno: 4.º, 3.º, 2.º y 1.º
+const PREMIUM_PAYMENTS = [10, 5, 2.5, 0];
 
     const defaultData = {
       setupDone: false,
@@ -459,21 +458,29 @@
     }
 
     function normalizeRounds() {
-      data.rounds = (data.rounds || []).map(round => {
-        const scores = Array.isArray(round.scores)
-          ? sanitizeNumberArray(round.scores)
-          : [0, 0, 0, 0];
+  data.rounds = (data.rounds || []).map(round => {
+    const scores = Array.isArray(round.scores)
+      ? sanitizeNumberArray(round.scores)
+      : [0, 0, 0, 0];
 
-        const premium = !!round.premium;
-        const payments = calculateRoundPayments(scores, premium);
+    const premium = !!round.premium;
 
-        return {
-          scores,
-          payments,
-          premium
-        };
-      });
-    }
+    // Conserva los importes que tenía la partida cuando fue registrada.
+    // Solo calcula los pagos si se trata de una partida antigua
+    // que no tenía esa información guardada.
+    const payments =
+      Array.isArray(round.payments) &&
+      round.payments.length === PLAYER_COUNT
+        ? sanitizeNumberArray(round.payments)
+        : calculateRoundPayments(scores, premium);
+
+    return {
+      scores,
+      payments,
+      premium
+    };
+  });
+}
 
     function getBaseTotalsArray() {
       const totals = [0, 0, 0, 0];
